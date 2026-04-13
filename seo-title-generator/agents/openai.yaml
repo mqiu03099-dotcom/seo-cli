@@ -1,0 +1,4 @@
+interface:
+  display_name: "SEO Title Generator"
+  short_description: "Generate title metadata from a URL for seo title commands"
+  default_prompt: "Use seo-title-generator to maintain the `seo ready title` and `seo create title` workflow, preserving fetched page metadata, returning Chinese-readable translations when needed, and generating publish-ready title and description output from a fetched URL."

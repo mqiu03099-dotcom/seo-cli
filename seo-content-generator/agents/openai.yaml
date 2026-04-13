@@ -1,4 +1,0 @@
-interface:
-  display_name: "SEO 内容生成器"
-  short_description: "生成 SEO 标题、描述、HTML 正文与 FAQ JSON"
-  default_prompt: "Use -content-generator to generate SEO content from a structured JSON input."

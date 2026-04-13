@@ -1,0 +1,4 @@
+interface:
+  display_name: "SEO Blog Generator"
+  short_description: "Generate SEO blog titles, HTML content, and FAQ JSON-LD from structured input"
+  default_prompt: "Use seo-blog-generator to generate publish-ready SEO blog content from a structured JSON input."

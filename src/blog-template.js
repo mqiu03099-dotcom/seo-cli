@@ -5,7 +5,7 @@ const READY_BLOG_TEMPLATE = {
   primary_keyword: "服装商城SEO",
   target_audience: "服装电商运营者",
   search_intent: "how-to",
-  language: "English | 简体中文 | 繁體中文 | 日本語 | 한국어 | Deutsch",
+  language: "English | 日本語 | 简体中文",
   word_count: "1500-2200",
   goal: "提升服装商城自然流量并促进新品转化",
   brand_tone: "professional",
