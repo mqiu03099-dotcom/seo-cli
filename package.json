@@ -1,0 +1,13 @@
+{
+  "name": "seo-skill",
+  "version": "0.1.0",
+  "description": "CLI for SEO content preparation workflows.",
+  "bin": {
+    "seo": "./bin/seo.js"
+  },
+  "scripts": {
+    "seo": "node ./bin/seo.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

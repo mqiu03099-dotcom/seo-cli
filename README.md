@@ -1,2 +1,0 @@
-# seo-skill
-seo-skill
