@@ -14,9 +14,10 @@ Maintain the `seo ready title` and `seo create title` workflow as a URL-driven m
 - Require `url` and `language` in the input payload.
 - Fetch the target page HTML before generating output.
 - Preserve source data in `fetched_title`, `fetched_description`, and `html`.
-- Return translated source data in `translated_title` and `translated_description` as Chinese-readable metadata for operator review.
+- Keep `html` as a fetched rich-text fragment for operator review, not the full raw page HTML document.
+- Return Chinese-readable source data in `output_zh` for operator review.
 - Generate optimized `title` and `description` according to the requested language.
-- Support publish-ready output for `简体中文`, `繁體中文`, `English`, `한국어`, `日本語`, and `Русский`.
+- Support publish-ready output for `English`, `日本語`, and `简体中文`.
 
 ## Input Contract
 
@@ -52,17 +53,27 @@ Return a JSON object that keeps both source metadata and optimized metadata:
 ```json
 {
   "title": "optimized title",
+  "slug": "url-safe-page-suffix",
   "description": "optimized description",
-  "html": "<!DOCTYPE html>...",
+  "html": "<h1>...</h1><p>...</p>",
   "fetched_title": "raw page title",
   "fetched_description": "raw meta description",
-  "translated_title": "Chinese-readable page title",
-  "translated_description": "Chinese-readable meta description"
+  "output_zh": {
+    "title": "Chinese-readable optimized title",
+    "description": "Chinese-readable optimized description",
+    "fetched_title": "Chinese-readable source title",
+    "fetched_description": "Chinese-readable source description"
+  }
 }
 ```
 
 Do not add `intro`.
 Do not add `html_excerpt`.
+
+Length targets:
+
+- `title` should be optimized to about `50-60` characters when possible.
+- `description` should be optimized to about `150-160` characters when possible.
 
 ## Generation Rules
 
@@ -70,16 +81,22 @@ Do not add `html_excerpt`.
 - Prefer `og:title` over plain `<title>` when both exist and `og:title` is more specific.
 - Prefer `og:description` as a fallback when the standard meta description is missing or weaker.
 - If `language` is `简体中文` or `中文简体`, generate a Chinese SEO-style title and description even when the source page is not Chinese.
-- If `language` is `繁體中文`, generate Traditional Chinese SEO-style metadata.
 - If `language` is `English`, generate publish-ready English metadata instead of reusing the fetched source text verbatim.
-- If `language` is `한국어`, `日本語`, or `Русский`, generate publish-ready metadata in that language using the same page understanding signals.
+- If `language` is `日本語`, generate publish-ready Japanese metadata using the same page understanding signals.
 - Keep `fetched_title` and `fetched_description` unchanged from the fetched page.
-- Return `translated_title` and `translated_description` as Chinese-readable versions of the fetched metadata.
+- Return `output_zh` as a Chinese-readable mirror of the generated output, excluding `html`.
+- Return `html` as a rich-text HTML fragment derived from the fetched page content, not the entire source document.
+- Do not return full-document tags such as `<html>`, `<head>`, or the entire raw page source in `html`.
+- Keep the page `slug` URL-safe, English-friendly where possible, and short enough for routing.
+- Limit `slug` to at most 4 words joined by `-`.
+- Any Chinese-readable mirror fields such as `output_zh`, `translated_title`, or `translated_description` must be direct translations, not prefixed with helper wording like `中文参考`, `参考版`, or operator notes.
 - Use the page heading, pathname, and host as fallback signals when source metadata is incomplete.
 - Read structured metadata when available, especially JSON-LD `VideoGame` fields such as `name`, `description`, and `applicationCategory`.
 - Read page-level category or tag signals when present, including lightweight in-page attributes such as `data-category` and `data-tags`.
 - Keep the optimized title concise and useful for search results.
 - Keep the optimized description ready to paste into a site page as a real meta description.
+- Keep the optimized title close to `50-60` characters when practical.
+- Keep the optimized description close to `150-160` characters when practical.
 - Never generate optimized copy that says things like `适合继续做 SEO 优化`, `标题优化建议`, or other internal workflow language.
 
 ## Search Display Constraints
@@ -143,7 +160,7 @@ For the returned fields:
 
 - `fetched_title` should reflect the strongest fetched title signal currently used by the CLI.
 - `fetched_description` should reflect the strongest fetched description signal currently used by the CLI.
-- `translated_title` and `translated_description` should be based on those fetched values, not on a weaker fallback when a stronger source exists.
+- `output_zh.fetched_title` and `output_zh.fetched_description` should be based on those fetched values, not on a weaker fallback when a stronger source exists.
 
 ## Game Page Heuristics
 

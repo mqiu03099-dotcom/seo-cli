@@ -16,6 +16,7 @@ Maintain the `seo ready blog` and `seo create blog` workflow as a structured SEO
 - Generate final blog output under the `output` object only.
 - Keep blog outputs written to the `blog/` directory.
 - Return publish-ready fields for title, slug, description, publish time, html, and faq.
+- Return a Chinese-readable `output_zh` object that also includes translated `html`.
 
 ## Input Contract
 
@@ -74,6 +75,7 @@ Return a JSON object with a publish-ready `output` payload:
   "description": "meta description",
   "publish_time": "ISO 8601 datetime",
   "html": "<h1>...</h1>...",
+  "output_zh": {},
   "faq": {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -85,11 +87,18 @@ Return a JSON object with a publish-ready `output` payload:
 Rules:
 
 - `title` must be final article title text.
+- `title` should be optimized to about `50-60` characters when possible.
 - `slug` must be URL-safe and derived from the article `<h1>` in the final `html`.
+- `slug` must use at most 4 words, joined with `-`, so it stays short enough for route usage.
 - `description` must be ready to use as the page meta description.
+- `description` should be optimized to about `150-160` characters when possible.
 - `publish_time` must be auto-generated ISO 8601 format.
 - `html` must be a complete rich-text HTML fragment and include the article `<h1>`.
+- `output_zh` must be a Chinese-readable mirror of the main output object and should include translated `html`.
+- `output_zh` must be a direct Chinese translation or Chinese-readable rendering of the output fields, without helper labels such as `中文参考`, `参考版`, or workflow notes.
+- `output_zh.html` must be a Chinese rich-text HTML fragment, not plain text.
 - `faq` must be valid FAQ JSON-LD using Schema.org `FAQPage`.
+- `title`, `html`, and `faq` must be rendered in the requested blog language instead of reusing another language template.
 
 ## Generation Rules
 
@@ -97,12 +106,18 @@ Rules:
 - Make the article useful to the target audience named in the input.
 - Keep the article aligned with the provided `topic`, `primary_keyword`, `goal`, and `remark`.
 - Ensure the title and description are consistent with the body content.
+- Keep the generated title close to `50-60` characters when practical.
+- Keep the generated description close to `150-160` characters when practical.
 - Use the provided `meta_description` directly as the SEO description unless the CLI contract changes.
 - Keep `slug` deterministic and URL-safe.
 - Generate `slug` from the final HTML content, using the article `<h1>` as the canonical route source instead of treating the input title field as the direct source of truth.
+- Keep `slug` short for routing. Limit it to 4 words maximum and join them with `-`.
 - Keep the CTA in the final HTML.
 - Ensure the article HTML includes section headings and readable paragraph structure.
 - Ensure FAQ questions and answers are relevant to the topic and keyword.
+- Prevent cross-domain template leakage. A game-site article must not inherit apparel-commerce headings or seasonal retail wording.
+- Prevent cross-language template leakage. English output must read naturally in English, Japanese output must read naturally in Japanese, and Simplified Chinese output must read naturally in Simplified Chinese.
+- When the requested language is not `简体中文`, still return a Chinese-readable translated HTML fragment in `output_zh.html` for operator review.
 
 ## Language Rules
 
@@ -110,6 +125,7 @@ Rules:
 - `seo ready blog` should advertise only those three options.
 - Input validation should fail early for any other language.
 - If language handling changes in the CLI, update this skill and the tests in the same change.
+- Each supported language needs its own title pattern, body section headings, body copy style, and FAQ wording.
 
 ## Maintenance Notes
 
