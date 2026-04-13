@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const pkg = require("../package.json");
 
 const {
   buildBlogTask,
@@ -31,17 +32,37 @@ const samplePayload = {
 test("buildBlogTask includes slug in the final output schema", () => {
   const task = buildBlogTask(samplePayload);
 
-  assert.equal(task.output.slug, "");
+  assert.notEqual(task.output.slug, "");
+});
+
+test("package name uses seo-cli", () => {
+  assert.equal(pkg.name, "seo-cli");
 });
 
 test("buildBlogTask declares that html output must include an h1", () => {
   const task = buildBlogTask(samplePayload);
 
-  assert.equal(task.output.html, "");
+  assert.match(task.output.html, /<h1>/);
   assert.equal(
     task.output_requirements.html,
     "Return a complete rich-text HTML fragment that includes the article H1."
   );
+});
+
+test("buildBlogTask generates a title, description and publish time", () => {
+  const task = buildBlogTask(samplePayload);
+
+  assert.match(task.output.title, /服装商城SEO/);
+  assert.equal(task.output.description, samplePayload.meta_description);
+  assert.match(task.output.publish_time, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("buildBlogTask generates FAQ content", () => {
+  const task = buildBlogTask(samplePayload);
+
+  assert.equal(task.output.faq["@type"], "FAQPage");
+  assert.match(task.output.faq.mainEntity[0].name, /服装商城SEO/);
+  assert.notEqual(task.output.faq.mainEntity[0].acceptedAnswer.text, "");
 });
 
 test("createOutputFilename uses the requested txt naming format", () => {
@@ -51,7 +72,7 @@ test("createOutputFilename uses the requested txt naming format", () => {
 });
 
 test("writeTaskToTxt persists the generated task object as a txt file", () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seo-skill-"));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seo-cli-"));
   const task = buildBlogTask(samplePayload);
   const outputPath = writeTaskToTxt(task, {
     cwd: tempDir,
@@ -67,10 +88,10 @@ test("writeTaskToTxt persists the generated task object as a txt file", () => {
 });
 
 test("createFileUrl returns a local file URL for the generated txt file", () => {
-  const fileUrl = createFileUrl("D:\\giteeContent\\xmkj\\seo-skill\\blog-2026-04-13-12-45-45.txt");
+  const fileUrl = createFileUrl("D:\\giteeContent\\xmkj\\seo-cli\\blog-2026-04-13-12-45-45.txt");
 
   assert.equal(
     fileUrl,
-    "file:///D:/giteeContent/xmkj/seo-skill/blog-2026-04-13-12-45-45.txt"
+    "file:///D:/giteeContent/xmkj/seo-cli/blog-2026-04-13-12-45-45.txt"
   );
 });

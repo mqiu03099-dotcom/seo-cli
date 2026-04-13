@@ -1,5 +1,5 @@
 {
-  "name": "seo-skill",
+  "name": "seo-cli",
   "version": "0.1.0",
   "description": "CLI for SEO content preparation workflows.",
   "bin": {
