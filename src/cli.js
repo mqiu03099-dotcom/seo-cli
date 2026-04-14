@@ -29,7 +29,82 @@ function createOutputFilename(now = new Date(), prefix = "blog") {
   const minutes = padNumber(now.getMinutes());
   const seconds = padNumber(now.getSeconds());
 
-  return `${prefix}-${year}-${month}-${day}-${hours}-${minutes}-${seconds}.json`;
+  return `${prefix}-${year}-${month}-${day}-${hours}-${minutes}-${seconds}.txt`;
+}
+
+function formatScalar(value) {
+  if (value === null) {
+    return "null";
+  }
+
+  if (value === undefined) {
+    return "";
+  }
+
+  return JSON.stringify(value);
+}
+
+function shouldRenderRawHtml(pathParts, value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const pathKey = pathParts.join(".");
+  return pathKey === "output.html" || pathKey === "output_zh.html";
+}
+
+function serializeTaskValue(value, indent = "", keyName = "", pathParts = [], isLast = false) {
+  if (shouldRenderRawHtml(pathParts, value)) {
+    return `${indent}"${keyName}":\n${indent}\`\n${value}\n${indent}\`${isLast ? "" : ","}`;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return `${indent}"${keyName}": []${isLast ? "" : ","}`;
+    }
+
+    const lines = [`${indent}"${keyName}": [`];
+
+    value.forEach((item, index) => {
+      const itemIsLast = index === value.length - 1;
+      if (item && typeof item === "object") {
+        lines.push(`${indent}  {`);
+        lines.push(serializeTaskObject(item, `${indent}    `, pathParts));
+        lines.push(`${indent}  }${itemIsLast ? "" : ","}`);
+      } else {
+        lines.push(`${indent}  ${formatScalar(item)}${itemIsLast ? "" : ","}`);
+      }
+    });
+
+    lines.push(`${indent}]${isLast ? "" : ","}`);
+    return lines.join("\n");
+  }
+
+  if (value && typeof value === "object") {
+    const header = keyName ? `${indent}"${keyName}": {` : `${indent}{`;
+    const body = serializeTaskObject(value, `${indent}  `, pathParts);
+    const footer = `${indent}}${isLast ? "" : ","}`;
+    return `${header}\n${body}\n${footer}`;
+  }
+
+  return keyName
+    ? `${indent}"${keyName}": ${formatScalar(value)}${isLast ? "" : ","}`
+    : `${indent}${formatScalar(value)}`;
+}
+
+function serializeTaskObject(value, indent = "", pathParts = [], isLast = true) {
+  const entries = Object.entries(value);
+  return entries
+    .map(([key, entryValue], index) =>
+      serializeTaskValue(
+        entryValue,
+        indent,
+        key,
+        [...pathParts, key],
+        index === entries.length - 1
+      )
+    )
+    .join("\n");
 }
 
 function writeTaskToTxt(task, options = {}) {
@@ -42,7 +117,7 @@ function writeTaskToTxt(task, options = {}) {
   const filePath = path.join(outputDir, fileName);
 
   fs.mkdirSync(outputDir, { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(task, null, 2)}\n`, "utf8");
+  fs.writeFileSync(filePath, `{\n${serializeTaskObject(task, "  ")}\n}\n`, "utf8");
   return filePath;
 }
 
@@ -69,6 +144,26 @@ function validateBlogInput(payload) {
   }
 
   for (const key of BLOG_INPUT_KEYS) {
+    if (key === "images") {
+      if (
+        !Array.isArray(payload.images) ||
+        payload.images.some(
+          (image) =>
+            !image ||
+            typeof image !== "object" ||
+            Array.isArray(image) ||
+            typeof image.url !== "string" ||
+            typeof image.description !== "string"
+        )
+      ) {
+        throw new Error(
+          "Blog field `images` must be an array of objects with string `url` and `description`."
+        );
+      }
+
+      continue;
+    }
+
     if (typeof payload[key] !== "string") {
       throw new Error(`Blog field \`${key}\` must be a string.`);
     }
@@ -508,20 +603,43 @@ function buildBlogSections(payload) {
 
 function buildBlogHtml(payload, title) {
   const sections = buildBlogSections(payload);
+  const imageHtml = buildBlogImageHtml(payload.images);
 
   const sectionHtml = sections
     .map(
-      (section) =>
-        `<section><h2>${section.heading}</h2><p>${section.body}</p></section>`
+      (section) => `<h2>${section.heading}</h2><p>${section.body}</p>`
     )
     .join("");
 
   return [
     `<h1>${title}</h1>`,
     `<p>${payload.meta_description}</p>`,
+    imageHtml,
     sectionHtml,
     `<p>${payload.cta}</p>`
   ].join("");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildBlogImageHtml(images = []) {
+  return images
+    .map(
+      (image) =>
+        `<p><img src="${escapeHtml(image.url)}" alt="${escapeHtml(
+          image.description
+        )}" width="100%" style="width:max-content;max-height:500px;display:block;margin:auto"></p><p>${escapeHtml(
+          image.description
+        )}</p>`
+    )
+    .join("");
 }
 
 function deriveBlogSlugFromHtml(html, fallbackValue = "") {
@@ -879,6 +997,7 @@ function buildBlogOutputZh(payload, output) {
 }
 
 function buildBlogOutputZhHtml(payload, outputZh) {
+  const imageHtml = buildBlogImageHtml(payload.images);
   const sections = [
     {
       heading: "核心观点",
@@ -895,12 +1014,13 @@ function buildBlogOutputZhHtml(payload, outputZh) {
   ];
 
   const sectionHtml = sections
-    .map((section) => `<section><h2>${section.heading}</h2><p>${section.body}</p></section>`)
+    .map((section) => `<h2>${section.heading}</h2><p>${section.body}</p>`)
     .join("");
 
   return [
     `<h1>${outputZh.title}</h1>`,
     `<p>${outputZh.description}</p>`,
+    imageHtml,
     sectionHtml
   ].join("");
 }
@@ -1598,7 +1718,8 @@ function buildBlogTask(payload) {
       slug: "Return a URL-safe slug derived from the article H1 in the final html, using at most 4 words joined by hyphens.",
       description: "Return the SEO description as plain text, optimized to about 150-160 characters.",
       publish_time: "Return the auto-generated publish time in ISO 8601 format.",
-      html: "Return a complete rich-text HTML fragment that includes the article H1.",
+      html:
+        "Return a complete HTML rich-text fragment that can be rendered directly, includes the article H1, renders the supplied images, and uses images.description as grounding for image-aligned copy.",
       faq: "Return FAQ JSON-LD using the Schema.org FAQPage format.",
       output_zh:
         "Return a Chinese-readable mirror of the output object, including translated html."

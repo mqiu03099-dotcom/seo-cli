@@ -34,7 +34,13 @@ const samplePayload = {
   meta_description:
     "了解服装商城如何通过 SEO 优化分类页、商品页和内容营销，提升春季新品自然流量与销量。",
   cta: "联系我们获取服装商城 SEO 增长方案",
-  remark: "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。"
+  remark: "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。",
+  images: [
+    {
+      url: "https://example.com/images/fashion-homepage-banner.jpg",
+      description: "服装商城首页横幅图，展示春季新品专区、导航入口和活动主视觉。"
+    }
+  ]
 };
 
 const gameBlogPayloadZh = {
@@ -154,8 +160,30 @@ test("buildBlogTask declares that html output must include an h1", () => {
   assert.match(task.output.html, /<h1>/);
   assert.equal(
     task.output_requirements.html,
-    "Return a complete rich-text HTML fragment that includes the article H1."
+    "Return a complete HTML rich-text fragment that can be rendered directly, includes the article H1, renders the supplied images, and uses images.description as grounding for image-aligned copy."
   );
+});
+
+test("buildBlogTask renders blog images with fixed responsive constraints", () => {
+  const task = buildBlogTask(samplePayload);
+
+  assert.match(task.output.html, /<p><img[^>]+src="https:\/\/example\.com\/images\/fashion-homepage-banner\.jpg"/);
+  assert.match(task.output.html, /width="100%"/);
+  assert.match(
+    task.output.html,
+    /style="width:max-content;max-height:500px;display:block;margin:auto"/
+  );
+  assert.doesNotMatch(task.output.html, /object-fit/);
+  assert.match(task.output.html, /<p>服装商城首页横幅图，展示春季新品专区、导航入口和活动主视觉。<\/p>/);
+});
+
+test("buildBlogTask uses editor-safe block tags for blog rich text", () => {
+  const task = buildBlogTask(samplePayload);
+
+  assert.doesNotMatch(task.output.html, /<section>/);
+  assert.doesNotMatch(task.output_zh.html, /<section>/);
+  assert.match(task.output.html, /<h2>/);
+  assert.match(task.output_zh.html, /<h2>/);
 });
 
 test("buildBlogTask generates a title, description and publish time", () => {
@@ -286,6 +314,9 @@ test("ready title returns a sample url payload", () => {
 
 test("ready blog advertises only English, Japanese, and simplified Chinese", () => {
   assert.equal(READY_BLOG_TEMPLATE.language, "English | 日本語 | 简体中文");
+  assert.ok(Array.isArray(READY_BLOG_TEMPLATE.images));
+  assert.equal(typeof READY_BLOG_TEMPLATE.images[0].url, "string");
+  assert.equal(typeof READY_BLOG_TEMPLATE.images[0].description, "string");
 });
 
 test("run help prints Chinese command guidance", async () => {
@@ -340,6 +371,17 @@ test("validateBlogInput rejects unsupported languages", () => {
   assert.throws(
     () => validateBlogInput({ ...samplePayload, language: "Русский" }),
     /Blog field `language` must be one of: English, 日本語, 简体中文./
+  );
+});
+
+test("validateBlogInput accepts image objects with url and description", () => {
+  assert.doesNotThrow(() => validateBlogInput(samplePayload));
+});
+
+test("validateBlogInput rejects invalid images payload", () => {
+  assert.throws(
+    () => validateBlogInput({ ...samplePayload, images: "https://example.com/a.jpg" }),
+    /Blog field `images` must be an array of objects with string `url` and `description`\./
   );
 });
 
@@ -729,13 +771,13 @@ test("buildTitleTask supports simplified Chinese, English, and Japanese output",
   }
 });
 
-test("createOutputFilename uses the requested json naming format", () => {
+test("createOutputFilename uses the requested txt naming format", () => {
   const fileName = createOutputFilename(new Date("2026-04-13T12:45:45+08:00"));
 
-  assert.equal(fileName, "blog-2026-04-13-12-45-45.json");
+  assert.equal(fileName, "blog-2026-04-13-12-45-45.txt");
 });
 
-test("writeTaskToTxt persists the generated task object as a json file", () => {
+test("writeTaskToTxt persists the generated task object as a txt file", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seo-cli-"));
   const task = buildBlogTask(samplePayload);
   const outputPath = writeTaskToTxt(task, {
@@ -744,34 +786,48 @@ test("writeTaskToTxt persists the generated task object as a json file", () => {
     subdir: "blog"
   });
 
-  assert.equal(path.basename(outputPath), "blog-2026-04-13-12-45-45.json");
+  assert.equal(path.basename(outputPath), "blog-2026-04-13-12-45-45.txt");
   assert.equal(path.basename(path.dirname(outputPath)), "blog");
   assert.equal(fs.existsSync(outputPath), true);
-  assert.match(
-    fs.readFileSync(outputPath, "utf8"),
-    /"task": "write_seo_blog"/
-  );
+  const fileText = fs.readFileSync(outputPath, "utf8");
+  assert.match(fileText, /"task": "write_seo_blog"/);
+  assert.match(fileText, /"html":\s*\r?\n\s*`/);
+  assert.doesNotMatch(fileText, /"html":\s*\r?\n\s*``/);
+  assert.match(fileText, /"output_requirements": \{/);
+  assert.match(fileText, /"html": "Return a complete HTML rich-text fragment/);
+  assert.match(fileText, /<h1>/);
+  assert.doesNotMatch(fileText, /\\"/);
 });
 
-test("writeTaskToTxt can persist title output under the title subdirectory as json", () => {
+test("writeTaskToTxt can persist title output under the title subdirectory as txt", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seo-cli-title-"));
-  const outputPath = writeTaskToTxt({ task: "write_seo_title" }, {
+  const outputPath = writeTaskToTxt({
+    task: "write_seo_title",
+    output: {
+      html: "<h1>Title Html</h1><p>Body</p>"
+    }
+  }, {
     cwd: tempDir,
     now: new Date("2026-04-13T12:45:45+08:00"),
     prefix: "title",
     subdir: "title"
   });
 
-  assert.equal(path.basename(outputPath), "title-2026-04-13-12-45-45.json");
+  assert.equal(path.basename(outputPath), "title-2026-04-13-12-45-45.txt");
   assert.equal(path.basename(path.dirname(outputPath)), "title");
   assert.equal(fs.existsSync(outputPath), true);
+  const fileText = fs.readFileSync(outputPath, "utf8");
+  assert.match(fileText, /"html":\s*\r?\n\s*`/);
+  assert.doesNotMatch(fileText, /"html":\s*\r?\n\s*``/);
+  assert.match(fileText, /<h1>Title Html<\/h1><p>Body<\/p>/);
+  assert.doesNotMatch(fileText, /\\"/);
 });
 
-test("createFileUrl returns a local file URL for the generated json file", () => {
-  const fileUrl = createFileUrl("D:\\giteeContent\\xmkj\\seo-cli\\blog-2026-04-13-12-45-45.json");
+test("createFileUrl returns a local file URL for the generated txt file", () => {
+  const fileUrl = createFileUrl("D:\\giteeContent\\xmkj\\seo-cli\\blog-2026-04-13-12-45-45.txt");
 
   assert.equal(
     fileUrl,
-    "file:///D:/giteeContent/xmkj/seo-cli/blog-2026-04-13-12-45-45.json"
+    "file:///D:/giteeContent/xmkj/seo-cli/blog-2026-04-13-12-45-45.txt"
   );
 });

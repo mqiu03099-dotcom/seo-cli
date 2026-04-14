@@ -1,6 +1,6 @@
 ---
 name: seo-blog-generator
-description: Use when Codex needs to define, maintain, or improve the `seo ready blog` and `seo create blog` workflow that accepts structured blog JSON, validates supported languages, and returns publish-ready blog output that can be written directly into a site content pipeline.
+description: Use when Codex needs to define, maintain, or improve the `seo ready blog` and `seo create blog` workflow that accepts structured blog JSON with image inputs, validates supported languages, and returns publish-ready blog output that can be written directly into a site content pipeline.
 ---
 
 # SEO Blog Generator
@@ -13,6 +13,7 @@ Maintain the `seo ready blog` and `seo create blog` workflow as a structured SEO
 - Keep `seo create blog` input as JSON.
 - Require the complete blog payload fields already defined by the CLI.
 - Restrict supported `language` values to `English`, `日本語`, and `简体中文`.
+- Treat `images` as required structured context, not optional decoration.
 - Generate final blog output under the `output` object only.
 - Keep blog outputs written to the `blog/` directory.
 - Return publish-ready fields for title, slug, description, publish time, html, and faq.
@@ -35,7 +36,17 @@ Maintain the `seo ready blog` and `seo create blog` workflow as a structured SEO
   "brand_tone": "professional",
   "meta_description": "了解服装商城如何通过 SEO 优化分类页、商品页和内容营销，提升春季新品自然流量与销量。",
   "cta": "联系我们获取服装商城 SEO 增长方案",
-  "remark": "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。"
+  "remark": "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。",
+  "images": [
+    {
+      "url": "https://example.com/images/fashion-homepage-banner.jpg",
+      "description": "服装商城首页横幅图，展示春季新品专区、导航入口和活动主视觉。"
+    },
+    {
+      "url": "https://example.com/images/fashion-category-page.jpg",
+      "description": "服装商城分类页示意图，突出分类标题、筛选区、商品列表和内链结构。"
+    }
+  ]
 }
 ```
 
@@ -54,7 +65,13 @@ Maintain the `seo ready blog` and `seo create blog` workflow as a structured SEO
   "brand_tone": "...",
   "meta_description": "...",
   "cta": "...",
-  "remark": "..."
+  "remark": "...",
+  "images": [
+    {
+      "url": "...",
+      "description": "..."
+    }
+  ]
 }
 ```
 
@@ -62,6 +79,7 @@ Validation rules:
 
 - Reject missing required fields.
 - Reject non-string field values.
+- Reject `images` values that are not arrays of objects with string `url` and string `description`.
 - Reject unsupported `language` values outside `English`, `日本語`, and `简体中文`.
 
 ## Output Contract
@@ -93,10 +111,10 @@ Rules:
 - `description` must be ready to use as the page meta description.
 - `description` should be optimized to about `150-160` characters when possible.
 - `publish_time` must be auto-generated ISO 8601 format.
-- `html` must be a complete rich-text HTML fragment and include the article `<h1>`.
+- `html` must be a complete HTML rich-text fragment that can be rendered directly and include the article `<h1>`.
 - `output_zh` must be a Chinese-readable mirror of the main output object and should include translated `html`.
 - `output_zh` must be a direct Chinese translation or Chinese-readable rendering of the output fields, without helper labels such as `中文参考`, `参考版`, or workflow notes.
-- `output_zh.html` must be a Chinese rich-text HTML fragment, not plain text.
+- `output_zh.html` must be a Chinese HTML rich-text fragment that can be rendered directly, not plain text.
 - `faq` must be valid FAQ JSON-LD using Schema.org `FAQPage`.
 - `title`, `html`, and `faq` must be rendered in the requested blog language instead of reusing another language template.
 
@@ -109,6 +127,11 @@ Rules:
 - Keep the generated title close to `50-60` characters when practical.
 - Keep the generated description close to `150-160` characters when practical.
 - Use the provided `meta_description` directly as the SEO description unless the CLI contract changes.
+- Read every item in `images` and use the image `description` fields as grounding context for what the page visually shows.
+- Use image context to strengthen the article summary, opening setup, and relevant body sections so the written copy matches the supplied visuals.
+- Do not dump raw image lists into the article. Convert image context into natural blog narration, concrete scene-setting, and image-aligned explanations.
+- When a supplied image clearly maps to a section, describe that section in a way that is consistent with the image content and its stated purpose.
+- If image descriptions add concrete page-layout or feature cues, reflect those cues in the generated blog body instead of inventing unrelated visual details.
 - Keep `slug` deterministic and URL-safe.
 - Generate `slug` from the final HTML content, using the article `<h1>` as the canonical route source instead of treating the input title field as the direct source of truth.
 - Keep `slug` short for routing. Limit it to 4 words maximum and join them with `-`.

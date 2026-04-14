@@ -12,7 +12,17 @@ const READY_BLOG_TEMPLATE = {
   meta_description:
     "了解服装商城如何通过 SEO 优化分类页、商品页和内容营销，提升春季新品自然流量与销量。",
   cta: "联系我们获取服装商城 SEO 增长方案",
-  remark: "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。"
+  remark: "开头结合春季上新和女装营销场景，不要太空泛，结尾强调转化。",
+  images: [
+    {
+      url: "https://example.com/images/fashion-homepage-banner.jpg",
+      description: "服装商城首页横幅图，展示春季新品专区、导航入口和活动主视觉。"
+    },
+    {
+      url: "https://example.com/images/fashion-category-page.jpg",
+      description: "服装商城分类页示意图，突出分类标题、筛选区、商品列表和内链结构。"
+    }
+  ]
 };
 
 const BLOG_INPUT_KEYS = [
@@ -27,7 +37,8 @@ const BLOG_INPUT_KEYS = [
   "brand_tone",
   "meta_description",
   "cta",
-  "remark"
+  "remark",
+  "images"
 ];
 
 module.exports = {
